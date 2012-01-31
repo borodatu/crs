@@ -1,0 +1,55 @@
+dependsOnChildren()
+
+allprojects {
+    group = 'com.copyright'
+    version = '0.0.1-SNAPSHOT'
+    repositories {
+        mavenCentral()
+        mavenRepo url: 'file://' + new File(System.getProperty('user.home'), '.m2/repository').absolutePath
+    }
+    //Tasks that will be executed while 'gradle' is called without params.
+    defaultTasks 'clean', 'pmd', 'build'
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    configurations {
+        pmdConf
+    }
+
+    dependencies {
+        pmdConf group: 'pmd', name: 'pmd', version: '4.2.5'
+    }
+
+    task pmd (dependsOn: compileJava) << {
+        println 'Running PMD static code analysis'
+        def pmd_rules = rootProject.getProjectDir().getCanonicalPath() +'/stylecheck/ccc_pmd_rules.xml'
+        ant {
+            if (!buildDir.isDirectory()) {
+                buildDir.mkdirs()
+            }
+            taskdef(name: 'pmd', classname: 'net.sourceforge.pmd.ant.PMDTask', classpath: configurations.pmdConf.asPath)
+            taskdef(name: 'cpd', classname: 'net.sourceforge.pmd.cpd.CPDTask', classpath: configurations.pmdConf.asPath)
+
+            pmd(shortFilenames: 'true',
+                    failonruleviolation: 'true',
+                    rulesetfiles: pmd_rules) {
+                formatter(type: 'xml', toFile: 'build/pmd.xml')
+                fileset(dir: "src/main/java") {
+                    include(name: '**/*.java')
+                }
+//                fileset(dir: "src/test/java") {
+//                    include(name: '**/*.java')
+//                }
+            }
+            cpd(minimumTokenCount: '50', format: 'xml',
+                    ignoreIdentifiers: 'true',
+                    outputFile: 'build/cpd.xml') {
+                fileset(dir: "src/main/java") {
+                    include(name: '**/*.java')
+                }
+            }
+        }
+    }
+}
